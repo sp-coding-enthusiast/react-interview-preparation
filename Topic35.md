@@ -1,753 +1,787 @@
-# 46. What is `useContext`?
+# 49. What is `useLayoutEffect`?
 
 ## Simple Definition
 
-`useContext` is a **React Hook** that allows a component to **access data from a Context without passing it through every intermediate component as props**.
+`useLayoutEffect` is a **React Hook** that runs **after React updates the DOM but before the browser paints the screen**.
 
 In simple words,
 
-> **`useContext` lets components share data directly, without passing props through every level of the component tree.**
+> **`useLayoutEffect` lets you read or change the DOM before the user sees it.**
 
-It solves a common problem called **Prop Drilling**.
+This prevents the user from seeing an incorrect or intermediate UI.
 
 ---
 
-# What is Prop Drilling?
+# Real-Life Analogy: Stage Performance
 
-Imagine you have this component structure:
+Imagine a theater.
 
-```
-App
-
-↓
-
-Header
-
-↓
-
-Navbar
-
-↓
-
-Profile
-
-↓
-
-Avatar
-```
-
-Suppose **App** has the logged-in user's name.
+The actors are getting ready backstage.
 
 ```
-App
+Actors
 
 ↓
 
-User = "Saurabh"
+Arrange Props
+
+↓
+
+Adjust Lights
+
+↓
+
+Curtain Opens
 ```
 
-But only **Avatar** needs it.
+The audience only sees the final, prepared stage.
 
-Without Context, you have to pass the data through every component.
+`useLayoutEffect` works the same way.
+
+It allows React to make final adjustments before the browser displays the page.
+
+---
+
+# Why Do We Need `useLayoutEffect`?
+
+Normally, React renders the page.
+
+Then the browser paints it.
+
+Sometimes, after the page is painted, you need to:
+
+- Measure an element's size
+- Measure its position
+- Scroll to a location
+- Adjust styles
+- Reposition tooltips
+- Prevent flickering
+
+If you wait until after the browser paints, the user might briefly see the wrong layout.
+
+`useLayoutEffect` avoids that by running **before** the paint.
+
+---
+
+# Visual Timeline
+
+```
+React Render
+
+↓
+
+DOM Updated
+
+↓
+
+useLayoutEffect
+
+↓
+
+Browser Paint
+
+↓
+
+User Sees Screen
+```
+
+---
+
+# Compare with `useEffect`
+
+`useEffect`
+
+```
+React Render
+
+↓
+
+DOM Updated
+
+↓
+
+Browser Paint
+
+↓
+
+User Sees Screen
+
+↓
+
+useEffect Runs
+```
+
+Notice:
+
+The user already sees the page before `useEffect` runs.
+
+---
+
+# Basic Syntax
 
 ```jsx
-<App user={user}>
+useLayoutEffect(() => {
 
-↓
+  // Read or update DOM
 
-<Header user={user}>
+  return () => {
 
-↓
+    // Cleanup
 
-<Navbar user={user}>
+  };
 
-↓
-
-<Profile user={user}>
-
-↓
-
-<Avatar user={user}>
+}, []);
 ```
 
-Notice that:
+The syntax is almost identical to `useEffect`.
 
-- `Header` doesn't need `user`
-- `Navbar` doesn't need `user`
-- `Profile` doesn't need `user`
-
-They are only forwarding it.
-
-This is called **Prop Drilling**.
+The main difference is **when it runs**.
 
 ---
 
-# Real-Life Analogy: Family Message
+# Example 1: Measure Width
 
-Imagine a father wants to tell his grandson:
-
-> "Dinner is ready."
-
-Without Context:
-
-```
-Father
-
-↓
-
-Mother
-
-↓
-
-Son
-
-↓
-
-Grandson
-```
-
-Everyone passes the same message.
-
-With Context:
-
-```
-Father
-
-↓
-
-Family Group
-
-↓
-
-Grandson Reads Message Directly
-```
-
-The middle people don't have to relay it.
-
-That's exactly what `useContext` does.
-
----
-
-# Why Do We Need `useContext`?
-
-Many applications have data that **many components need**.
-
-Examples:
-
-- Logged-in user
-- Theme (Light/Dark)
-- Language
-- Authentication status
-- Shopping cart
-- Application settings
-
-Instead of passing these values through every component,
-
-we can store them in a Context.
-
-Any component can read them using `useContext`.
-
----
-
-# Visual Representation
-
-Without Context
-
-```
-App
-
-↓
-
-Header
-
-↓
-
-Navbar
-
-↓
-
-Profile
-
-↓
-
-Avatar
-```
-
-Every component passes props.
-
----
-
-With Context
-
-```
-Context
-
-↙   ↓   ↘
-
-Header
-
-Navbar
-
-Avatar
-```
-
-Every component can access the shared data directly.
-
----
-
-# How `useContext` Works
-
-React Context has **three parts**.
-
-## Step 1: Create a Context
+Suppose you need the width of a `<div>`.
 
 ```jsx
-import { createContext } from "react";
+import {
+  useLayoutEffect,
+  useRef
+} from "react";
 
-const UserContext =
-  createContext();
-```
+function App() {
 
-This creates a Context object.
+  const boxRef =
+    useRef(null);
 
----
+  useLayoutEffect(() => {
 
-## Step 2: Provide the Value
+    console.log(
+      boxRef.current.offsetWidth
+    );
 
-```jsx
-<UserContext.Provider
-  value="Saurabh"
->
+  }, []);
 
-  <App />
-
-</UserContext.Provider>
-```
-
-The **Provider** makes the value available to all components inside it.
-
----
-
-## Step 3: Consume the Value
-
-```jsx
-import { useContext } from "react";
-
-const user =
-  useContext(UserContext);
-```
-
-Now the component can access the value directly.
-
----
-
-# Complete Example
-
-## Create Context
-
-```jsx
-import { createContext } from "react";
-
-export const UserContext =
-  createContext();
-```
-
----
-
-## Provide Value
-
-```jsx
-<UserContext.Provider
-  value="Saurabh"
->
-
-  <Profile />
-
-</UserContext.Provider>
-```
-
----
-
-## Read Value
-
-```jsx
-import { useContext } from "react";
-import { UserContext } from "./UserContext";
-
-function Profile() {
-
-  const user =
-    useContext(UserContext);
-
-  return <h1>{user}</h1>;
+  return (
+    <div ref={boxRef}>
+      Hello
+    </div>
+  );
 
 }
 ```
 
-Output
-
-```
-Saurabh
-```
+React measures the width before the browser paints the screen.
 
 ---
 
-# Visual Flow
+# Example 2: Prevent Flickering
+
+Imagine a tooltip.
+
+Without `useLayoutEffect`
 
 ```
-Provider
+Tooltip Appears
 
 ↓
 
-Stores Value
+Wrong Position
 
 ↓
 
-Any Child Component
+Moves
 
 ↓
 
-useContext()
-
-↓
-
-Gets Value
+Correct Position
 ```
+
+The user briefly sees the incorrect position.
 
 ---
 
-# Real-Life Analogy: Wi-Fi
-
-Imagine a Wi-Fi router.
+With `useLayoutEffect`
 
 ```
-Router
+Tooltip Created
 
 ↓
 
-Internet
+Measure Position
 
 ↓
 
-Laptop
+Move Tooltip
 
 ↓
 
-Phone
+Browser Paints
 
 ↓
 
-Tablet
+Correct Position Visible
 ```
 
-Every device connects directly to the router.
-
-The laptop doesn't get the internet from the phone.
-
-Similarly,
-
-every component reads the Context directly.
+The user never sees the incorrect position.
 
 ---
 
-# Common Use Cases
-
-## 1. Logged-In User
+# Example 3: Scroll to Bottom
 
 ```jsx
-<UserContext.Provider
-  value={user}
->
+useLayoutEffect(() => {
+
+  listRef.current.scrollTop =
+    listRef.current.scrollHeight;
+
+}, []);
 ```
 
-Every component can access the current user.
+The browser paints the page after the scroll position is already correct.
 
 ---
 
-## 2. Theme
+# Real-Life Analogy: Painting a Wall
+
+Imagine painting a wall.
+
+```
+Fill Holes
+
+↓
+
+Sand Surface
+
+↓
+
+Paint
+```
+
+You prepare the wall before anyone sees it.
+
+`useLayoutEffect` prepares the UI before it is displayed.
+
+---
+
+# When Should You Use `useLayoutEffect`?
+
+Use it when you need to:
+
+- Measure element size
+- Measure element position
+- Scroll before paint
+- Position tooltips
+- Position popups
+- Synchronize animations
+- Avoid visual flickering
+
+---
+
+# When NOT to Use It
+
+Don't use it for:
+
+- Fetching APIs
+- Timers
+- Logging
+- Analytics
+- Most side effects
+
+Those belong in `useEffect`.
+
+---
+
+# Why?
+
+`useLayoutEffect` blocks the browser from painting until it finishes.
+
+If you perform slow work inside it,
+
+the screen appears later.
+
+---
+
+# Summary
+
+- `useLayoutEffect` runs after the DOM is updated but before the browser paints.
+- It is useful for reading or modifying layout-related information without visual flicker.
+- It should be used only when necessary because it can delay painting.
+
+---
+
+# 50. `useLayoutEffect` vs `useEffect`
+
+## Simple Difference
+
+The biggest difference is **timing**.
+
+- **`useEffect` runs after the browser paints the screen.**
+- **`useLayoutEffect` runs before the browser paints the screen.**
+
+---
+
+# Easy Memory Trick
+
+Imagine cleaning your room.
+
+### `useLayoutEffect`
+
+```
+Clean Room
+
+↓
+
+Guests Arrive
+```
+
+Guests never see the mess.
+
+---
+
+### `useEffect`
+
+```
+Guests Arrive
+
+↓
+
+Then Clean Room
+```
+
+Guests briefly see the mess.
+
+---
+
+# Visual Timeline
+
+## `useEffect`
+
+```
+React Render
+
+↓
+
+DOM Updated
+
+↓
+
+Browser Paint
+
+↓
+
+User Sees UI
+
+↓
+
+useEffect Runs
+```
+
+---
+
+## `useLayoutEffect`
+
+```
+React Render
+
+↓
+
+DOM Updated
+
+↓
+
+useLayoutEffect Runs
+
+↓
+
+Browser Paint
+
+↓
+
+User Sees UI
+```
+
+---
+
+# Example: Measuring Height
+
+Suppose you need an element's height.
+
+With `useEffect`
+
+```
+Render
+
+↓
+
+Paint
+
+↓
+
+Measure
+
+↓
+
+Update
+
+↓
+
+Paint Again
+```
+
+The user may notice the UI shift.
+
+---
+
+With `useLayoutEffect`
+
+```
+Render
+
+↓
+
+Measure
+
+↓
+
+Update
+
+↓
+
+Paint Once
+```
+
+No visible jump.
+
+---
+
+# Example: Tooltip
+
+Using `useEffect`
+
+```
+Wrong Position
+
+↓
+
+User Sees It
+
+↓
+
+Move Tooltip
+```
+
+A flicker can occur.
+
+---
+
+Using `useLayoutEffect`
+
+```
+Calculate Position
+
+↓
+
+Move Tooltip
+
+↓
+
+Paint
+```
+
+The tooltip appears correctly from the start.
+
+---
+
+# Example: API Call
 
 ```jsx
-<ThemeContext.Provider
-  value="dark"
->
+useEffect(() => {
+
+  fetch("/users");
+
+}, []);
 ```
 
-Every component knows the current theme.
+This is the correct choice.
+
+There's no need to block the browser while waiting for network requests.
 
 ---
 
-## 3. Language
+# Example: DOM Measurement
 
 ```jsx
-<LanguageContext.Provider
-  value="English"
->
+useLayoutEffect(() => {
+
+  console.log(
+    divRef.current.offsetHeight
+  );
+
+}, []);
 ```
 
-Every component can display the correct language.
+Correct.
 
 ---
 
-## 4. Shopping Cart
+# Performance Difference
 
-```jsx
-<CartContext.Provider
-  value={cart}
->
+## `useEffect`
+
+```
+Paint Screen
+
+↓
+
+Run Effect
 ```
 
-The cart icon, checkout page, and order summary can all read the same cart data.
+The browser remains responsive.
 
 ---
 
-# Multiple Contexts
+## `useLayoutEffect`
 
-An application can have many Contexts.
+```
+Run Effect
 
-```jsx
-<UserContext.Provider
-  value={user}
->
+↓
 
-  <ThemeContext.Provider
-    value="dark"
-  >
-
-    <LanguageContext.Provider
-      value="English"
-    >
-
-      <App />
-
-    </LanguageContext.Provider>
-
-  </ThemeContext.Provider>
-
-</UserContext.Provider>
+Paint Screen
 ```
 
-Components can read one or more contexts as needed.
+Painting waits until the effect completes.
+
+Slow work here can make the UI feel less responsive.
 
 ---
 
-# What Happens When Context Changes?
+# Real-Life Analogy: Tailor
 
-Suppose:
+Imagine buying a suit.
+
+`useLayoutEffect`
 
 ```
-Theme
+Measure
 
 ↓
 
-Light
+Adjust
+
+↓
+
+Wear Suit
 ```
 
-User changes it.
-
-```
-Dark
-```
-
-React updates the Context value.
-
-Components that read that Context receive the new value and re-render to reflect the change.
+Perfect fit immediately.
 
 ---
 
-# `useContext` vs Props
-
-Without Context
+`useEffect`
 
 ```
-App
+Wear Suit
 
 ↓
 
-Header
+Measure
 
 ↓
 
-Navbar
-
-↓
-
-Profile
-
-↓
-
-Avatar
+Adjust Later
 ```
 
-Many components pass the same prop.
-
----
-
-With Context
-
-```
-Context
-
-↓
-
-Avatar
-```
-
-The component that needs the data reads it directly.
+People first see the poor fit.
 
 ---
 
 # Side-by-Side Comparison
 
-| Feature | Props | `useContext` |
-|----------|-------|--------------|
-| Pass data to child | ✅ Yes | ✅ Yes (through Provider) |
-| Avoid Prop Drilling | ❌ No | ✅ Yes |
-| Good for local component communication | ✅ Yes | Possible, but often unnecessary |
-| Good for app-wide shared data | Limited | ✅ Excellent |
-| Easy to understand | ✅ Yes | Requires learning Context |
+| Feature | `useEffect` | `useLayoutEffect` |
+|----------|-------------|-------------------|
+| Runs after render | ✅ Yes | ✅ Yes |
+| Runs before browser paint | ❌ No | ✅ Yes |
+| Runs after browser paint | ✅ Yes | ❌ No |
+| Blocks painting | ❌ No | ✅ Yes |
+| Good for API calls | ✅ Yes | ❌ No |
+| Good for timers | ✅ Yes | ❌ No |
+| Good for DOM measurement | Possible, but may flicker | ✅ Excellent |
+| Good for layout calculations | Possible, but may flicker | ✅ Excellent |
+| Good for preventing flicker | ❌ Usually No | ✅ Yes |
 
 ---
 
-# Should You Use `useContext` Everywhere?
+# When to Use Each
 
-No.
+## Use `useEffect`
 
-Use **Props** when:
+- API requests
+- Logging
+- Analytics
+- Timers
+- WebSocket connections
+- Event listeners
+- Most side effects
 
-- Data is only needed by a child or two.
-- The component hierarchy is shallow.
+---
 
-Use **Context** when:
+## Use `useLayoutEffect`
 
-- Many components need the same data.
-- Passing props through multiple levels becomes difficult.
+- Measuring DOM elements
+- Reading element position
+- Scrolling before paint
+- Positioning tooltips or popups
+- Synchronizing visual layout changes
+- Preventing flickering
 
 ---
 
 # Common Mistakes
 
-## Using Context for Everything
+## Using `useLayoutEffect` Everywhere
 
-Not every piece of data belongs in Context.
+Wrong.
 
-Example:
+It can slow rendering because it blocks painting.
 
-```jsx
-const [count, setCount] =
-  useState(0);
-```
-
-If only one component uses `count`,
-
-there is no need for Context.
+Prefer `useEffect` unless you specifically need pre-paint behavior.
 
 ---
 
-## Forgetting the Provider
-
-Wrong
+## Fetching Data with `useLayoutEffect`
 
 ```jsx
-const user =
-  useContext(UserContext);
+useLayoutEffect(() => {
+
+  fetch("/users");
+
+}, []);
 ```
 
-without wrapping the component tree in:
+This provides no benefit and unnecessarily delays painting.
 
-```jsx
-<UserContext.Provider>
-```
-
-The component receives the Context's default value (or `undefined` if no default was provided), which may not be what you expect.
+Use `useEffect` instead.
 
 ---
 
-## Thinking Context Replaces State
+## Ignoring Cleanup
 
-Context shares data.
-
-It does **not** replace state management.
-
-Usually,
-
-the state is stored in a component using `useState` or `useReducer`,
-
-and that state is then shared through Context.
-
----
-
-# `useContext` + `useReducer`
-
-A common pattern in medium and large React applications is:
-
-```
-useReducer
-
-↓
-
-Stores State
-
-↓
-
-Context
-
-↓
-
-Shares State
-
-↓
-
-Components Read State
-```
-
-This combination avoids prop drilling while keeping state updates organized.
-
----
-
-# Real-World Example: E-commerce
-
-```
-Shopping Cart
-
-↓
-
-Product Page
-
-↓
-
-Header
-
-↓
-
-Checkout
-
-↓
-
-Payment
-```
-
-Instead of passing the cart through every component,
-
-store it in `CartContext`.
-
-Any component can read it with:
+Just like `useEffect`, `useLayoutEffect` can return a cleanup function.
 
 ```jsx
-const cart =
-  useContext(CartContext);
+useLayoutEffect(() => {
+
+  window.addEventListener(
+    "resize",
+    handleResize
+  );
+
+  return () => {
+
+    window.removeEventListener(
+      "resize",
+      handleResize
+    );
+
+  };
+
+}, []);
 ```
 
 ---
 
 # Common Interview Questions
 
-## 1. What is `useContext`?
+## 1. What is `useLayoutEffect`?
 
 **Answer:**
 
-`useContext` is a React Hook that allows a component to read values from a Context without passing them through props at every level.
+`useLayoutEffect` is a React Hook that runs synchronously after the DOM is updated but before the browser paints the screen. It is used for layout measurements and DOM updates that should happen before the user sees the UI.
 
 ---
 
-## 2. Why Do We Use `useContext`?
+## 2. What Is the Difference Between `useEffect` and `useLayoutEffect`?
 
 **Answer:**
 
-We use `useContext` to avoid prop drilling and to share common data such as themes, logged-in users, languages, or shopping carts across multiple components.
+`useEffect` runs after the browser paints the screen.
+
+`useLayoutEffect` runs before the browser paints the screen.
 
 ---
 
-## 3. What Problem Does `useContext` Solve?
+## 3. Why Is `useLayoutEffect` Less Common?
 
 **Answer:**
 
-It solves **Prop Drilling**, where props have to be passed through intermediate components that don't actually use the data.
+Because it blocks the browser from painting until it finishes. Most side effects don't require this behavior, so `useEffect` is usually the better choice.
 
 ---
 
-## 4. Can `useContext` Replace Props?
+## 4. When Should You Use `useLayoutEffect`?
 
 **Answer:**
 
-No.
-
-Props are still the best choice for communication between closely related components.
-
-`useContext` is mainly for sharing data across many components.
+Use it for DOM measurements, positioning elements, synchronizing visual updates, scrolling, or preventing flickering.
 
 ---
 
-## 5. Can `useContext` Replace `useState`?
+## 5. Can `useLayoutEffect` Replace `useEffect`?
 
 **Answer:**
 
-No.
-
-`useState` manages state.
-
-`useContext` shares data.
-
-They are often used together.
-
----
-
-## 6. Can Updating a Context Value Cause Components to Re-render?
-
-**Answer:**
-
-Yes.
-
-When the value provided by a Context changes, React re-renders the components that consume that Context so they receive the updated value.
+Technically, many `useEffect` use cases would still work with `useLayoutEffect`, but it is not recommended. `useLayoutEffect` should be reserved for layout-related work because it can impact performance.
 
 ---
 
 # Easy Memory Trick
 
-Imagine a water tank.
+Imagine hanging a picture frame.
+
+### `useLayoutEffect`
 
 ```
-Water Tank
+Measure Wall
 
 ↓
 
-Kitchen
+Hang Frame
 
 ↓
 
-Bathroom
-
-↓
-
-Garden
+Guests Arrive
 ```
 
-Every room gets water directly from the tank.
+Guests see it perfectly placed.
 
-No room has to pass water to another room.
+---
 
-`useContext` works the same way.
+### `useEffect`
 
 ```
-Context
+Hang Frame
 
 ↓
 
-Any Component
+Guests Arrive
 
 ↓
 
-Reads Shared Data Directly
+Adjust Frame
 ```
+
+Guests briefly see it crooked.
 
 ---
 
 # Summary
 
-- `useContext` is a React Hook used to access values stored in a Context.
-- It helps avoid **Prop Drilling** by allowing components to read shared data directly.
-- A Context consists of three parts:
-  1. Create the Context.
-  2. Provide the value with a `Provider`.
-  3. Read the value using `useContext`.
-- It is commonly used for themes, authentication, languages, shopping carts, and application-wide settings.
-- `useContext` does not replace `useState`; instead, it is often combined with `useState` or `useReducer` to share state across the component tree.
+- `useLayoutEffect` runs after React updates the DOM but before the browser paints.
+- It is designed for layout-related tasks such as measuring elements, adjusting positions, scrolling, and preventing flickering.
+- `useEffect` runs after the browser paints and is the preferred Hook for most side effects like API calls, timers, subscriptions, and logging.
+- `useLayoutEffect` should be used sparingly because it blocks painting and can affect performance if overused.
+- A simple rule to remember:
+  - **If it affects what the user sees before the screen appears → `useLayoutEffect`.**
+  - **For almost everything else → `useEffect`.**
